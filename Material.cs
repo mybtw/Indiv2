@@ -14,11 +14,25 @@ namespace RayTracing
 
         public float specularExponent { get; set; }
 
-        public Material(Vector3 albedo, Vector3 diffuseColor, float specularExponent)
+        public float refractiveIndex { get; set; }
+
+
+        public float albedo4 { get; set; }
+
+        public Material() 
+        {
+            this.refractiveIndex = 1;
+            this.albedo = new Vector3(1, 0, 0);
+            this.albedo4 = 0;
+        }
+
+        public Material(float refractiveIndex, float albedo4, Vector3 albedo, Vector3 diffuseColor, float specularExponent)
         {
             this.diffuseColor = diffuseColor;
             this.albedo = albedo;
             this.specularExponent = specularExponent;
+            this.refractiveIndex = refractiveIndex;
+            this.albedo4 = albedo4;
         }
 
     }

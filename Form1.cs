@@ -29,15 +29,22 @@ namespace RayTracing
 
         private void Render()
         {
-            Material ivory = new Material(new Vector3(0.6f,  0.3f, 0), new Vector3(0.4f, 0.4f, 0.3f),   50.0f);
-            Material red_rubber = new Material(new Vector3(0.9f,  0.1f, 0), new Vector3(0.3f, 0.1f, 0.1f),   10.0f);
+            Material ivory = new Material(1.0f, 0.0f, new Vector3(0.6f,  0.3f, 0.1f), new Vector3(0.4f, 0.4f, 0.3f),   50.0f);
+            Material glass = new Material(1.5f, 0.8f, new Vector3(0.0f, 0.5f, 0.1f), new Vector3(0.6f, 0.7f, 0.8f),  125.0f);
+            Material red_rubber = new Material(1.0f, 0.0f, new Vector3(0.9f,  0.1f, 0), new Vector3(0.3f, 0.1f, 0.1f),   10.0f);
+            Material mirror = new Material(1.0f, 0.0f, new Vector3(0.0f, 10.0f, 0.8f), new Vector3(1.0f, 1.0f, 1.0f), 1425.0f);
+
+            /*    
+    Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
+    Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
+    Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);*/
             List<Sphere> spheres = new List<Sphere>
             {
                 new Sphere(new Vector3(-3, 0, -16), 2, ivory),
-                new Sphere(new Vector3(-1.0f, -1.5f, -12), 2, red_rubber),
+                new Sphere(new Vector3(-1.0f, -1.5f, -12), 2, glass),
                 new Sphere(new Vector3(1.5f, -0.5f, -18), 3, red_rubber),
-                new Sphere(new Vector3(7, 5, -18), 4, ivory)
-        };
+                new Sphere(new Vector3(7, 5, -18), 4, mirror)
+            };
 
             List<Light> lights = new List<Light>
             {
@@ -45,7 +52,7 @@ namespace RayTracing
                 new Light(new Vector3(-20, 20, 20), 1.5f),
                 new Light(new Vector3( 30, 50, -25), 1.8f),
                 new Light(new Vector3(30, 20, 30), 1.7f)
-        };
+            };
 
             Color[] buffer = new Color[pictureBox1.Width * pictureBox1.Height];
             {
@@ -75,15 +82,24 @@ namespace RayTracing
             pictureBox1.Invalidate();
         }
 
-        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<Sphere> spheres, List<Light> lights)
+        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<Sphere> spheres, List<Light> lights, int depth = 0)
         {
             Vector3 point, N;
             Material material;
-            if (!SceneIntersect(orig, dir, spheres, out point, out N, out material))
+        
+            if (depth > 5 || !SceneIntersect(orig, dir, spheres, out point, out N, out material))
             {
                 return new Vector3(0.2f, 0.7f, 0.8f);
             }
-            
+
+            Vector3 reflectDir = Vector3.UnitVector(reflect(dir, N));
+            Vector3 refractDir = Vector3.UnitVector(refract(dir, N, material.refractiveIndex));
+
+            Vector3 reflectOrig = Vector3.Dot(reflectDir, N) < 0 ? point - N * 1e-3f : point + N * 1e-3f; // offset the original point to avoid occlusion by the object itself
+            Vector3 reflectColor = CastRay(reflectOrig, reflectDir, spheres, lights, depth + 1);
+
+            Vector3 refractOrig = Vector3.Dot(refractDir, N) < 0 ? point - N * 1e-3f : point + N * 1e-3f;
+            Vector3 refractColor = CastRay(refractOrig, refractDir, spheres, lights, depth + 1);
 
             float diffuseLightIntensity = 0;
             float specularLightIntensity = 0;
@@ -104,7 +120,7 @@ namespace RayTracing
                 specularLightIntensity += (float)Math.Pow(Math.Max(0.0f, Vector3.Dot(reflect(lightDir, N), dir)), material.specularExponent) * l.intensity;
             }
 
-            return material.diffuseColor * diffuseLightIntensity * material.albedo[0] + new Vector3(1.0f, 1.0f, 1.0f) * specularLightIntensity * material.albedo[1];
+            return material.diffuseColor * diffuseLightIntensity * material.albedo[0] + new Vector3(1.0f, 1.0f, 1.0f) * specularLightIntensity * material.albedo[1] + reflectColor * material.albedo[2] + refractColor * material.albedo4; ;
         }
 
         public static bool SceneIntersect(Vector3 orig, Vector3 dir, List<Sphere> spheres, out Vector3 hit, out Vector3 N, out Material material)
@@ -112,8 +128,7 @@ namespace RayTracing
             float spheresDist = float.MaxValue;
             hit = new Vector3(0, 0, 0);
             N = new Vector3(0, 0, 0);
-            material = new Material(new Vector3(0, 0, 0), new Vector3(0, 0, 0), 0);
-
+            material = new Material(0, 0, new Vector3(0, 0, 0), new Vector3(0, 0, 0), 0);
             foreach (Sphere sphere in spheres)
             {
                 float distI;
@@ -129,8 +144,24 @@ namespace RayTracing
             return spheresDist < 1000.0f;
         }
 
+        /*Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index) { // Snell's law
+    float cosi = - std::max(-1.f, std::min(1.f, I*N));
+    float etai = 1, etat = refractive_index;
+    Vec3f n = N;
+    if (cosi < 0) { // if the ray is inside the object, swap the indices and invert the normal to get the correct result*/
+
         Vector3 reflect(Vector3 I, Vector3 N) {
             return I - N * 2.0f * (Vector3.Dot(I, N));
+        }
+
+        Vector3 refract(Vector3 I, Vector3 N, float eta_t, float eta_i = 1.0f) { // Snell's law
+            float cosi = - Math.Max(-1.0f, Math.Min(1.0f, Vector3.Dot(I, N)));
+            if (cosi < 0) { // if the ray is inside the object, swap the indices and invert the normal to get the correct result
+                return refract(I, -N, eta_i, eta_t);
+            }
+            float eta = eta_i / eta_t;
+            float k = 1 - eta * eta * (1 - cosi * cosi);
+            return k < 0 ? new Vector3(1,0,0) : I * eta + N * (eta * cosi - (float)Math.Sqrt(k));
         }
     }
 }
