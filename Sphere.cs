@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RayTracing
 {
-    public class Sphere
+    public class Sphere : SceneObject
     {
         public Vector3 Center { get; private set; }
         public float Radius { get; private set; }
@@ -19,8 +19,7 @@ namespace RayTracing
             Radius = radius;
             this.material = material;
         }
-
-        public bool RayIntersect(Vector3 orig, Vector3 dir, out float t0)
+        public override bool RayIntersect(Vector3 orig, Vector3 dir, out float t0)
         {
             t0 = 0;
             Vector3 L = Center - orig;
@@ -35,6 +34,16 @@ namespace RayTracing
             return true;
         }
 
+   
 
+        public override Vector3 getNormal(Vector3 hit)
+        {
+            return Vector3.UnitVector((hit - this.Center));
+        }
+
+        public override Material getMaterial()
+        {
+            return material;
+        }
     }
 }

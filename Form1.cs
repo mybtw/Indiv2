@@ -38,17 +38,17 @@ namespace RayTracing
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);*/
-            List<Sphere> spheres = new List<Sphere>
+            List<SceneObject> spheres = new List<SceneObject>
             {
-                new Sphere(new Vector3(-3, 0, -16), 2, ivory),
+                //new Sphere(new Vector3(0, 0, -10), 4, ivory),
                 new Sphere(new Vector3(-1.0f, -1.5f, -12), 2, glass),
                 new Sphere(new Vector3(1.5f, -0.5f, -18), 3, red_rubber),
-                new Sphere(new Vector3(7, 5, -18), 4, mirror)
+                new Sphere(new Vector3(7, 5, -18), 4, red_rubber)
             };
 
             List<Light> lights = new List<Light>
             {
-               // new Light(new Vector3(0, 0, -1), 1.5f),
+                new Light(new Vector3(0, 0, -15), 1.5f),
                 new Light(new Vector3(-20, 20, 20), 1.5f),
                 new Light(new Vector3( 30, 50, -25), 1.8f),
                 new Light(new Vector3(30, 20, 30), 1.7f)
@@ -82,7 +82,7 @@ namespace RayTracing
             pictureBox1.Invalidate();
         }
 
-        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<Sphere> spheres, List<Light> lights, int depth = 0)
+        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<SceneObject> spheres, List<Light> lights, int depth = 0)
         {
             Vector3 point, N;
             Material material;
@@ -123,21 +123,21 @@ namespace RayTracing
             return material.diffuseColor * diffuseLightIntensity * material.albedo[0] + new Vector3(1.0f, 1.0f, 1.0f) * specularLightIntensity * material.albedo[1] + reflectColor * material.albedo[2] + refractColor * material.albedo4; ;
         }
 
-        public static bool SceneIntersect(Vector3 orig, Vector3 dir, List<Sphere> spheres, out Vector3 hit, out Vector3 N, out Material material)
+        public static bool SceneIntersect(Vector3 orig, Vector3 dir, List<SceneObject> spheres, out Vector3 hit, out Vector3 N, out Material material)
         {
             float spheresDist = float.MaxValue;
             hit = new Vector3(0, 0, 0);
             N = new Vector3(0, 0, 0);
             material = new Material(0, 0, new Vector3(0, 0, 0), new Vector3(0, 0, 0), 0);
-            foreach (Sphere sphere in spheres)
+            foreach (SceneObject sphere in spheres)
             {
                 float distI;
                 if (sphere.RayIntersect(orig, dir, out distI) && distI < spheresDist)
                 {
                     spheresDist = distI;
                     hit = orig + dir * distI;
-                    N = Vector3.UnitVector((hit - sphere.Center));
-                    material = sphere.material;
+                    N = sphere.getNormal(hit);
+                    material = sphere.getMaterial();
                 }
             }
 
