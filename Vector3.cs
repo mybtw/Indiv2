@@ -70,6 +70,16 @@ namespace RayTracing
                 a.X * b.Y - a.Y * b.X);
         }
 
+        public static Vector3 norm(Edge S)
+        {
+            if (S.points.Count() < 3)
+                return new Vector3(0, 0, 0);
+            Vector3 U = S.points[1] - S.points[0];
+            Vector3 V = S.points[S.points.Count - 1] - S.points[0];
+            Vector3 normal = U * V;
+            return UnitVector(normal);
+        }
+
         public static Vector3 operator -(Vector3 v)
         {
             return new Vector3(-v.X, -v.Y, -v.Z);

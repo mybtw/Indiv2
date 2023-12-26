@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.ConstrainedExecution;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -38,13 +39,21 @@ namespace RayTracing
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);*/
+            Cube cube = new Cube(3, glass);
             List<SceneObject> spheres = new List<SceneObject>
             {
-                //new Sphere(new Vector3(0, 0, -10), 4, ivory),
-                new Sphere(new Vector3(-1.0f, -1.5f, -12), 2, glass),
-                new Sphere(new Vector3(1.5f, -0.5f, -18), 3, red_rubber),
-                new Sphere(new Vector3(7, 5, -18), 4, red_rubber)
-            };
+                //new Plane(new Vector3(0, 0, -1), backWallDistance, ivory),
+               // new Plane(new Vector3(1, 0, 0), sideWallsDistance, red_rubber),
+               // new Plane(new Vector3(-1, 0, 0), sideWallsDistance, mirror),
+               // new Plane(new Vector3(0, 1, 0), floorCeilingDistance, glass),
+               // new Plane(new Vector3(0, -1, 0), floorCeilingDistance, ivory)
+            //new Sphere(new Vector3(0, 0, -10), 4, ivory),
+            //new Sphere(new Vector3(-1.0f, -1.5f, -12), 2, glass),
+            //new Sphere(new Vector3(1.5f, -0.5f, -18), 3, red_rubber),
+            //new Sphere(new Vector3(7, 5, -18), 4, red_rubber),
+            //new Cube(new Vector3(-2, -2, -10),new Vector3(-10, -10, -15), red_rubber)
+        };
+   
 
             List<Light> lights = new List<Light>
             {
@@ -64,7 +73,7 @@ namespace RayTracing
                         float x = (2 * (i + 0.5f) / width - 1) * (float)Math.Tan(fov / 2) * width / height;
                         float y = -(2 * (j + 0.5f) / height - 1) * (float)Math.Tan(fov / 2);
                         Vector3 dir = Vector3.UnitVector(new Vector3(x, y, -1));
-                        Vector3 coefs = CastRay(new Vector3(0, 0, 0), dir, spheres, lights);
+                        Vector3 coefs = CastRay(new Vector3(0, 0, 0), dir, spheres, cube, lights);
                         float max = Math.Max(coefs[0], Math.Max(coefs[1], coefs[2]));
                         if (max > 1) coefs = coefs * (1.0f/ max);
                         buffer[i + j * width] = Color.FromArgb((int)(255 * coefs.X), (int)(255 * coefs.Y), (int)(255 * coefs.Z));
@@ -82,12 +91,12 @@ namespace RayTracing
             pictureBox1.Invalidate();
         }
 
-        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<SceneObject> spheres, List<Light> lights, int depth = 0)
+        public Vector3 CastRay(Vector3 orig, Vector3 dir, List<SceneObject> spheres,Cube cube, List<Light> lights, int depth = 0)
         {
             Vector3 point, N;
             Material material;
         
-            if (depth > 5 || !SceneIntersect(orig, dir, spheres, out point, out N, out material))
+            if (depth > 5 || !SceneIntersect(orig, dir, spheres, cube, out point, out N, out material))
             {
                 return new Vector3(0.2f, 0.7f, 0.8f);
             }
@@ -96,10 +105,10 @@ namespace RayTracing
             Vector3 refractDir = Vector3.UnitVector(refract(dir, N, material.refractiveIndex));
 
             Vector3 reflectOrig = Vector3.Dot(reflectDir, N) < 0 ? point - N * 1e-3f : point + N * 1e-3f; // offset the original point to avoid occlusion by the object itself
-            Vector3 reflectColor = CastRay(reflectOrig, reflectDir, spheres, lights, depth + 1);
+            Vector3 reflectColor = CastRay(reflectOrig, reflectDir, spheres, cube, lights, depth + 1);
 
             Vector3 refractOrig = Vector3.Dot(refractDir, N) < 0 ? point - N * 1e-3f : point + N * 1e-3f;
-            Vector3 refractColor = CastRay(refractOrig, refractDir, spheres, lights, depth + 1);
+            Vector3 refractColor = CastRay(refractOrig, refractDir, spheres, cube, lights, depth + 1);
 
             float diffuseLightIntensity = 0;
             float specularLightIntensity = 0;
@@ -112,7 +121,7 @@ namespace RayTracing
 
                 Vector3 shadow_pt, shadow_N;
                 Material tmpmaterial;
-                if (SceneIntersect(shadowOrig, lightDir, spheres,out shadow_pt, out shadow_N, out tmpmaterial) && (shadow_pt - shadowOrig).Length() < lightDistance)
+                if (SceneIntersect(shadowOrig, lightDir, spheres,cube, out shadow_pt, out shadow_N, out tmpmaterial) && (shadow_pt - shadowOrig).Length() < lightDistance)
                     continue;
 
 
@@ -123,7 +132,7 @@ namespace RayTracing
             return material.diffuseColor * diffuseLightIntensity * material.albedo[0] + new Vector3(1.0f, 1.0f, 1.0f) * specularLightIntensity * material.albedo[1] + reflectColor * material.albedo[2] + refractColor * material.albedo4; ;
         }
 
-        public static bool SceneIntersect(Vector3 orig, Vector3 dir, List<SceneObject> spheres, out Vector3 hit, out Vector3 N, out Material material)
+        public static bool SceneIntersect(Vector3 orig, Vector3 dir, List<SceneObject> spheres, Cube model, out Vector3 hit, out Vector3 N, out Material material)
         {
             float spheresDist = float.MaxValue;
             hit = new Vector3(0, 0, 0);
@@ -139,9 +148,24 @@ namespace RayTracing
                     N = sphere.getNormal(hit);
                     material = sphere.getMaterial();
                 }
+               
+            }
+            float triangles_dist = float.MaxValue;
+            for (int i = 0; i < model.NFaces(); i++)
+            {
+                float tnear = float.MaxValue;
+                if (model.RayTriangleIntersect(i, orig, dir, out tnear) && tnear < triangles_dist)
+                {
+                    triangles_dist = tnear;
+                    hit = orig + dir * tnear;
+                    Vector3 edge1 = model.Point(model.Vert(i, 1)) - model.Point(model.Vert(i, 0));
+                    Vector3 edge2 = model.Point(model.Vert(i, 2)) - model.Point(model.Vert(i, 0));
+                    N = Vector3.UnitVector(Vector3.Cross(edge1, edge2));
+                    material = model.material;
+                }
             }
 
-            return spheresDist < 1000.0f;
+            return Math.Min(spheresDist, triangles_dist) < 1000.0f;
         }
 
         /*Vec3f refract(const Vec3f &I, const Vec3f &N, const float &refractive_index) { // Snell's law
