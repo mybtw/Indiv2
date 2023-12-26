@@ -39,7 +39,12 @@ namespace RayTracing
     Material      glass(1.5, Vec4f(0.0,  0.5, 0.1, 0.8), Vec3f(0.6, 0.7, 0.8),  125.);
     Material red_rubber(1.0, Vec4f(0.9,  0.1, 0.0, 0.0), Vec3f(0.3, 0.1, 0.1),   10.);
     Material     mirror(1.0, Vec4f(0.0, 10.0, 0.8, 0.0), Vec3f(1.0, 1.0, 1.0), 1425.);*/
-            Cube cube = new Cube(3, glass);
+            Cube cube = new Cube(3, ivory);
+            cube.RotateAroundOwnAxisY(50);
+          //  cube.RotateVerticesAroundX(10);
+          //cube.RotateVerticesAroundY(40);
+           cube.RotateAroundOwnAxisZ(50);
+          // cube.RotateVerticesAroundY(-10);
             List<SceneObject> spheres = new List<SceneObject>
             {
                 //new Plane(new Vector3(0, 0, -1), backWallDistance, ivory),
@@ -153,14 +158,15 @@ namespace RayTracing
             float triangles_dist = float.MaxValue;
             for (int i = 0; i < model.NFaces(); i++)
             {
-                float tnear = float.MaxValue;
+                Vector3 edge1 = model.Point(model.Vert(i, 1)) - model.Point(model.Vert(i, 0));
+                Vector3 edge2 = model.Point(model.Vert(i, 2)) - model.Point(model.Vert(i, 0));
+                var normalVal = Vector3.UnitVector(Vector3.Cross(edge1, edge2));
+                float tnear;
                 if (model.RayTriangleIntersect(i, orig, dir, out tnear) && tnear < triangles_dist)
                 {
                     triangles_dist = tnear;
-                    hit = orig + dir * tnear;
-                    Vector3 edge1 = model.Point(model.Vert(i, 1)) - model.Point(model.Vert(i, 0));
-                    Vector3 edge2 = model.Point(model.Vert(i, 2)) - model.Point(model.Vert(i, 0));
-                    N = Vector3.UnitVector(Vector3.Cross(edge1, edge2));
+                    hit = orig + tnear * dir;
+                    N = normalVal;
                     material = model.material;
                 }
             }
