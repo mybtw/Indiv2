@@ -1,87 +1,84 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace RayTracing
 {
-    public class Cube : SceneObject
-    {
+    public class Room : SceneObject
+    { 
         public List<Vector3> verts { get; set; }
         public List<Vector3> faces { get; set; }
 
-        public Material material { get; set; }
+        public List<Material> material { get; set; }
+
+        public Material materialToReturn { get; set; }
 
         public Vector3 hitToReturn { get; set; }
         public Vector3 normalToReturn { get; set; }
-
         public AABB box { get; set; } = new AABB();
 
-        public Cube(float sideLen, Material material)
+        public Room(float sideLen, List<Material> material)
         {
             this.material = material;
             float d = sideLen / 2; // Half the side length
 
             // Define vertices
             verts = new List<Vector3>
-            {
-                new Vector3(-d, -d, -d), // 0 A
-                new Vector3(d, -d, -d), // 1 B
-                new Vector3(d, d, -d),  // 2 C
-                new Vector3(-d, d, -d),  // 3 D
-                new Vector3(-d, -d, d),  // 4 E
-                new Vector3(d, -d, d),  // 5 F
-                new Vector3(d, d, d),  // 6 G
-                new Vector3(-d, d, d)  // 7 H
-            };
+                {
+                    new Vector3(-d, -d, -d), // 0 A
+                    new Vector3(d, -d, -d), // 1 B
+                    new Vector3(d, d, -d),  // 2 C
+                    new Vector3(-d, d, -d),  // 3 D
+                    new Vector3(-d, -d, d),  // 4 E
+                    new Vector3(d, -d, d),  // 5 F
+                    new Vector3(d, d, d),  // 6 G
+                    new Vector3(-d, d, d)  // 7 H
+                };
 
             // Define indices for 12 triangles (2 per face)
             faces = new List<Vector3>
-            {
-                // Front face
-             /*   new Vector3(1, 3, 0), // B D A
-                new Vector3(1, 2, 3),// B C D
-                // Back face
-                new Vector3(4, 6, 5), // E G F
-                new Vector3(4, 7, 6),// E H G
-                // Left face
-                new Vector3(4, 3, 7), // E D H
-                new Vector3(4, 0, 3),// E A D
-                // Right face
-                new Vector3(1, 5, 6), // B F G
-                new Vector3(1, 6, 2),// B G C
-                // Top face
-                new Vector3(3, 2, 6), // D C G
-                new Vector3(3, 6, 7),// D G H
-                // Bottom face
-                new Vector3(4, 1, 0), // E B A
-                new Vector3(4, 5, 1), // E F B
-                // Front face*/
-                new Vector3(0, 3, 1), // B D A
-                new Vector3(3, 2, 1),// B C D
-                // Back face
-                new Vector3(5, 6, 4), // E G F
-                new Vector3(6, 7, 4),// E H G
-                // Left face
-                new Vector3(7, 3, 4), // E D H
-                new Vector3(3, 0, 4),// E A D
-                // Right face
-                new Vector3(6, 5, 1), // B F G
-                new Vector3(2, 6, 1),// B G C
-                // Top face
-                new Vector3(6, 2, 3), // D C G
-                new Vector3(7, 6, 3),// D G H
-                // Bottom face
-                new Vector3(0, 1, 4), // E B A
-                new Vector3(1, 5, 4),// E F B
-            };
+                {
+                    // Front face
+                 /*   new Vector3(1, 3, 0), // B D A
+                    new Vector3(1, 2, 3),// B C D
+                    // Back face
+                    new Vector3(4, 6, 5), // E G F
+                    new Vector3(4, 7, 6),// E H G
+                    // Left face
+                    new Vector3(4, 3, 7), // E D H
+                    new Vector3(4, 0, 3),// E A D
+                    // Right face
+                    new Vector3(1, 5, 6), // B F G
+                    new Vector3(1, 6, 2),// B G C
+                    // Top face
+                    new Vector3(3, 2, 6), // D C G
+                    new Vector3(3, 6, 7),// D G H
+                    // Bottom face
+                    new Vector3(4, 1, 0), // E B A
+                    new Vector3(4, 5, 1), // E F B
+                    // Front face*/
+                    new Vector3(0, 3, 1), // B D A
+                    new Vector3(3, 2, 1),// B C D      
+                    // Back face
+                    new Vector3(5, 6, 4), // E G F
+                    new Vector3(6, 7, 4),// E H G
+                    // Left face
+                    new Vector3(7, 3, 4), // E D H
+                    new Vector3(3, 0, 4),// E A D
+                    // Right face
+                    new Vector3(6, 5, 1), // B F G
+                    new Vector3(2, 6, 1),// B G C
+                    // Top face
+                    new Vector3(6, 2, 3), // D C G
+                    new Vector3(7, 6, 3),// D G H
+                    // Bottom face
+                    new Vector3(0, 1, 4), // E B A
+                    new Vector3(1, 5, 4),// E F B
+                };
             calcBox();
         }
-
         public void calcBox()
         {
             for (int i = 0; i < verts.Count; i++)
@@ -166,19 +163,19 @@ namespace RayTracing
 
 
 
-        public  int NVerts()
+        public int NVerts()
         {
             return verts.Count;
         }
 
-        public  int NFaces()
+        public int NFaces()
         {
             return faces.Count;
         }
 
         private const float kEpsilon = 1e-8f;
 
-        public  bool RayTriangleIntersect(int fi, Vector3 orig, Vector3 dir, out float t)
+        public bool RayTriangleIntersect(int fi, Vector3 orig, Vector3 dir, out float t)
         {
             var v1 = Point(Vert(fi, 1));
             var v0 = Point(Vert(fi, 0));
@@ -258,7 +255,6 @@ namespace RayTracing
 
             MoveBackFromOrigin(center);
             calcBox();
-
         }
 
         private void RotateX(float angleDegrees)
@@ -283,8 +279,6 @@ namespace RayTracing
             {
                 verts[i] += translation;
             }
-            calcBox();
-
         }
 
 
@@ -297,7 +291,6 @@ namespace RayTracing
 
             MoveBackFromOrigin(center);
             calcBox();
-
         }
 
         private void RotateZ(float angleDegrees)
@@ -361,116 +354,33 @@ namespace RayTracing
             }
         }
 
-        /* public override bool RayTriangleIntersect(int fi, Vector3 orig, Vector3 dir, out float tnear)
-         {
-              Vector3 edge1 = Point(Vert(fi, 1)) - Point(Vert(fi, 0));
-              Vector3 edge2 = Point(Vert(fi, 2)) - Point(Vert(fi, 0));
-              Vector3 pvec = Vector3.Cross(dir, edge2);
-              float det = Vector3.Dot(edge1, pvec);
-
-              if (det < 1e-5)
-              {
-                  tnear = 0;
-                  return false;
-              }
-
-              Vector3 tvec = orig - Point(Vert(fi, 0));
-              float u = Vector3.Dot(tvec, pvec);
-              if (u < 0 || u > det)
-              {
-                  tnear = 0;
-                  return false;
-              }
-
-              Vector3 qvec = Vector3.Cross(tvec, edge1);
-              float v = Vector3.Dot(dir, qvec);
-              if (v < 0 || u + v > det)
-              {
-                  tnear = 0;
-                  return false;
-              }
-
-              tnear = Vector3.Dot(edge2, qvec) * (1.0f / det);
-              return tnear > 1e-5;
-         }*/
-        /* public bool RayIntersect(Vector3 orig, Vector3 dir)
-         {
-             float t = float.MaxValue;
-             Vector3 face;
-             bool isIntersection = false;
-             for (int i = 0; i < faces.Count; i++)
-             {
-                 float tri;
-                 var r = RayTriangleIntersect(i, orig, dir,out tri);
-                 if (r && tri < t)
-                 {
-                     t = tri;
-                     face = faces[i];
-                     isIntersection = true;
-                 }
-             }
-             if (isIntersection)
-             {
-                 Vector3 hitPoint = orig + t * dir;
-                 Vector3 normal = Vector3.UnitVector(Vector3.Cross(((verts[face.Y] - verts[face.X]), (verts[face.Z] - verts[face.X])));
-                 return true;
-             }
-         }*/
-
-        /*std::optional<IntersectResult> Model::rayIntersectOld(const Ray& ray) const {
-    if(box.intersect(ray)) {
-        float t = std::numeric_limits<float>::max();
-        vec3i face;
-        bool isIntersection = false;
-        std::array<vec3f,3> tri;
-        for(const auto& f: faces) {
-            tri[0] = vertices[f.x];
-            tri[1] = vertices[f.y];
-            tri[2] = vertices[f.z];
-            auto r = rayIntersectWithTriangle(ray, tri);
-            if(r.has_value() && r.value() < t) {
-                t = r.value();
-                isIntersection = true;
-                face = f;
-            }
-        }
         
-        if(isIntersection) {
-            vec3f hitPoint = ray.o + t * ray.d;
-            vec3f normal = cross((vertices[face.y] - vertices[face.x]), (vertices[face.z] - vertices[face.x])).normalize();
-            return IntersectResult{t, hitPoint, material, normal};
-        }
-    }
-    return std::nullopt;
-}*/
-
-        public  Vector3 Point(int i)
+        public Vector3 Point(int i)
         {
             return verts[i];
         }
 
-        public  int Vert(int fi, int li)
+        public int Vert(int fi, int li)
         {
             return (int)faces[fi][li];
         }
 
-        public  void GetBBox(out Vector3 min, out Vector3 max)
+        public void GetBBox(out Vector3 min, out Vector3 max)
         {
             throw new NotImplementedException();
         }
 
         public override bool RayIntersect(Vector3 orig, Vector3 dir, out float t)
         {
-            t = 0;
+            t = float.MaxValue;
             if (box.Intersect(orig, dir))
             {
-                t = float.MaxValue;
                 bool res = false;
                 for (int i = 0; i < NFaces(); i++)
                 {
                     Vector3 edge1 = Point(Vert(i, 1)) - Point(Vert(i, 0));
                     Vector3 edge2 = Point(Vert(i, 2)) - Point(Vert(i, 0));
-                    var normalVal = Vector3.UnitVector(Vector3.Cross(edge1, edge2));
+                    var normalVal = Vector3.UnitVector(Vector3.Cross(edge2, edge1));
                     float tnear;
                     if (RayTriangleIntersect(i, orig, dir, out tnear) && tnear < t)
                     {
@@ -478,35 +388,12 @@ namespace RayTracing
                         t = tnear;
                         hitToReturn = orig + tnear * dir;
                         normalToReturn = normalVal;
-                        material = material;
+                        materialToReturn = material[i];
                     }
                 }
                 return res;
             }
             return false;
-        }
-        public void ScaleY(float scaleFactor)
-        {
-            Vector3 center = CalculateCenter();
-            // Смещаем вершины так, чтобы центр куба оказался в начале координат
-            for (int i = 0; i < verts.Count; i++)
-            {
-                verts[i] -= center;
-            }
-
-            // Выполняем масштабирование вдоль оси Y
-            for (int i = 0; i < verts.Count; i++)
-            {
-                var vertex = verts[i];
-                verts[i] = new Vector3(vertex.X, vertex.Y * scaleFactor, vertex.Z);
-            }
-
-            // Смещаем вершины обратно
-            for (int i = 0; i < verts.Count; i++)
-            {
-                verts[i] += center;
-            }
-            calcBox();
         }
 
         public override Vector3 getNormal(Vector3 hit)
@@ -516,10 +403,7 @@ namespace RayTracing
 
         public override Material getMaterial()
         {
-            return material;
+            return materialToReturn;
         }
     }
-
-
-
 }
